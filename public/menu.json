@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "name": "Karl's Deluxe",
+    "price": 245,
+    "description": "A patty melt served Karl’s Style with a crispy seasoned beef patty, caramelized onions & cheese on a toasty inverted bun",
+    "category": "Popular",
+    "category_group": "Burgers",
+    "image": "/images/karls-deluxe.png",
+    "popular": true
+  },
+  {
+    "id": 2,
+    "name": "Beast Style",
+    "price": 375,
+    "description": "Smashed crispy beef patties with house seasoning, American cheese, pickles, diced white onion, mayo, ketchup, and mustard on a soft roll",
+    "category": "Popular",
+    "category_group": "Burgers",
+    "image": "/images/beast-style.png",
+    "popular": true
+  },
+  {
+    "id": 3,
+    "name": "Seasoned Crinkle Fries",
+    "price": 165,
+    "description": "Crinkle fries seasoned with spicy peri powder",
+    "category": "Popular",
+    "category_group": "Sides",
+    "image": "/images/seasoned-fries.png",
+    "popular": true
+  },
+  {
+    "id": 4,
+    "name": "Karl's Grilled Cheese",
+    "price": 195,
+    "description": "3 slices of American cheese griddled crisp on an inverted bun",
+    "category": "Popular",
+    "category_group": "Sandwiches",
+    "image": "/images/grilled-cheese.png",
+    "popular": true
+  },
+  {
+    "id": 5,
+    "name": "Chandler Style",
+    "price": 365,
+    "description": "Two smashed crispy beef patties with house seasoning, served with American cheese on a toasted bun.",
+    "category": "Popular",
+    "category_group": "Burgers",
+    "image": "/images/chandler-style.png",
+    "popular": true
+  },
+  {
+    "id": 6,
+    "name": "Beast Style Combo",
+    "price": 550,
+    "description": "Beast Style Burger with Seasoned Crinkle Fries and choice of Soda",
+    "category": "Combo",
+    "category_group": "Combo",
+    "image": "/images/beast-combo.png",
+    "popular": false
+  },
+  {
+    "id": 7,
+    "name": "Chris Style",
+    "price": 430,
+    "description": "Two smashed crispy beef patties with house seasoning, American cheese, bacon, topped with crinkle fries",
+    "category": "Burgers",
+    "category_group": "Burgers",
+    "image": "/images/chris-style.png",
+    "popular": false
+  },
+  {
+    "id": 8,
+    "name": "Beast Style Fries",
+    "price": 250,
+    "description": "Seasoned crinkle fries loaded with caramelized onions, American cheese, pickles, mayo, ketchup and mustard",
+    "category": "Sides",
+    "category_group": "Sides",
+    "image": "/images/beast-fries.png",
+    "popular": false
+  }
+]
