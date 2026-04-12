@@ -90,10 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="card-info">
                     <h3>${item.name}</h3>
                     <p>${item.description}</p>
-                    <div class="card-footer">
-                        <span class="price">₱ ${item.price}</span>
-                        <button class="add-btn" data-id="${item.id}">+</button>
-                    </div>
+                        <div class="card-footer">
+                            <span class="price">PHP ${item.price}</span>
+                            <button class="add-btn" data-id="${item.id}">+</button>
+                        </div>
                 </div>
             `;
 
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (addBtn) {
             const id = Number(addBtn.dataset.id);
             const item = menuData.find(m => m.id === id);
-            if (item) addToCart(item);
+            if (item) showDetails(item); // open modal first so user can choose qty
             return;
         }
 
@@ -148,12 +148,12 @@ document.addEventListener('DOMContentLoaded', () => {
     searchInput.addEventListener('input', onSearch);
 
     // Cart Functions
-    function addToCart(item) {
+    function addToCart(item, qty = 1) {
         const existing = cart.find(c => c.id === item.id);
         if (existing) {
-            existing.qty++;
+            existing.qty += qty;
         } else {
-            cart.push({ ...item, qty: 1 });
+            cart.push({ ...item, qty: qty });
         }
         updateCart();
     }
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cart.length === 0) {
             cartItemsContainer.innerHTML = '<div class="empty-cart"><p>Your cart is empty.</p></div>';
             checkoutBtn.disabled = true;
-            totalAmountSpan.textContent = '₱ 0';
+            totalAmountSpan.textContent = 'PHP 0';
             return;
         }
 
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <img src="${item.image}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=2072&auto=format&fit=crop'">
                 <div class="cart-item-info">
                     <div class="cart-item-name">${item.name}</div>
-                    <div class="cart-item-price">₱ ${item.price} x ${item.qty}</div>
+                    <div class="cart-item-price">PHP ${item.price} x ${item.qty}</div>
                 </div>
                 <div class="qty-controls">
                     <button class="qty-btn minus" data-id="${item.id}">-</button>
@@ -204,11 +204,11 @@ document.addEventListener('DOMContentLoaded', () => {
             cartItemsContainer.appendChild(cartItem);
         });
 
-        totalAmountSpan.textContent = `₱ ${total.toLocaleString()}`;
+        totalAmountSpan.textContent = `PHP ${total.toLocaleString()}`;
         checkoutBtn.disabled = false;
         
         // Dynamic text for checkout button
-        checkoutBtn.textContent = `Checkout (₱ ${total.toLocaleString()})`;
+        checkoutBtn.textContent = `Checkout (PHP ${total.toLocaleString()})`;
     }
 
     // Checkout Action
@@ -263,7 +263,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h2 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem;">${item.name}</h2>
                     <p style="font-size: 1.1rem; color: var(--on-surface-variant); margin-bottom: 2rem; line-height: 1.6;">${item.description}</p>
                     <div style="margin-top: auto;">
-                        <span style="font-size: 2rem; font-weight: 800; color: var(--primary); display: block; margin-bottom: 1.5rem;">₱ ${item.price}</span>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:600;">Quantity</label>
+                        <div class="qty-controls" style="margin-bottom:1rem;">
+                            <button class="qty-btn minus" type="button">-</button>
+                            <span>1</span>
+                            <button class="qty-btn plus" type="button">+</button>
+                            <span style="margin-left:auto; font-size:2rem; font-weight:800; color:var(--primary);">PHP ${item.price}</span>
+                        </div>
                         <button class="checkout-btn addToCartFromModal" style="width: 100%;">Add Order to Basket</button>
                     </div>
                 </div>
@@ -272,8 +278,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modal.style.display = 'block';
 
+        const minusBtn = modalBody.querySelector('.qty-controls .minus');
+        const plusBtn = modalBody.querySelector('.qty-controls .plus');
+        const qtySpan = modalBody.querySelector('.qty-controls span');
+
+        // ensure the first span is the numeric display
+        const qtyDisplay = qtySpan; // already selects the first span inside qty-controls
+        qtyDisplay.textContent = '1';
+
+        minusBtn.onclick = () => {
+            const v = Math.max(1, parseInt(qtyDisplay.textContent || '1') - 1);
+            qtyDisplay.textContent = v;
+        };
+
+        plusBtn.onclick = () => {
+            const v = Math.max(1, parseInt(qtyDisplay.textContent || '1') + 1);
+            qtyDisplay.textContent = v;
+        };
+
         modalBody.querySelector('.addToCartFromModal').onclick = () => {
-            addToCart(item);
+            const qty = Math.max(1, parseInt(qtyDisplay.textContent || '1'));
+            addToCart(item, qty);
             modal.style.display = 'none';
         };
 

@@ -123,7 +123,7 @@
             <div class="cart-footer">
                 <div class="total-row">
                     <span>Total</span>
-                    <span id="total-amount">₱ 0</span>
+                    <span id="total-amount">PHP 0</span>
                 </div>
                 <button class="checkout-btn" disabled>Checkout</button>
             </div>
