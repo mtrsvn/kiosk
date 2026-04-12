@@ -84,7 +84,7 @@ body {
     align-items: center;
     z-index: 9000;
     cursor: pointer;
-    transition: transform 0.8s cubic-bezier(0.86, 0, 0.07, 1);
+    transition: opacity 0.8s cubic-bezier(0.86, 0, 0.07, 1);
 }
 
 .start-bg-overlay {
@@ -111,6 +111,13 @@ body {
     margin-bottom: 3rem;
     letter-spacing: -4px;
     font-family: 'Outfit', sans-serif;
+}
+
+.start-image-logo {
+    width: 360px;
+    max-width: 70vw;
+    margin-bottom: 2rem;
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6));
 }
 
 .sidebar-text-logo {
@@ -168,7 +175,8 @@ body {
 }
 
 .start-screen.hidden {
-    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Layout */

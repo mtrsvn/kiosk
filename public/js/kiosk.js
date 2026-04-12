@@ -20,27 +20,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     }, 1000);
 
-    // Start Order
+    // Start Order — fade out then hide from layout
     startScreen.addEventListener('click', () => {
         startScreen.classList.add('hidden');
+
+        const onTransitionEnd = (e) => {
+            // wait for opacity transition to finish
+            if (e.propertyName === 'opacity') {
+                startScreen.style.display = 'none';
+                startScreen.removeEventListener('transitionend', onTransitionEnd);
+            }
+        };
+
+        startScreen.addEventListener('transitionend', onTransitionEnd);
     });
 
-    // Fetch Menu Data
+    // Fetch Menu Data with sessionStorage cache
+    const cached = sessionStorage.getItem('menuData');
+    if (cached) {
+        try {
+            menuData = JSON.parse(cached);
+            renderMenu('Popular');
+        } catch (e) {
+            sessionStorage.removeItem('menuData');
+        }
+    }
+
     fetch('/menu.json')
         .then(response => response.json())
         .then(data => {
             menuData = data;
+            try { sessionStorage.setItem('menuData', JSON.stringify(data)); } catch (e) {}
             renderMenu('Popular');
         })
         .catch(err => console.error('Error loading menu:', err));
 
     // Render Menu Items
     function renderMenu(category, query = '') {
+        // Clear and build with a document fragment to minimize reflows
         menuGrid.innerHTML = '';
         categoryTitle.textContent = category === 'Popular' ? '🔥 Most ordered right now' : category;
 
         const filtered = menuData.filter(item => {
-            const matchesCategory = category === 'Popular' ? item.popular : item.category === category;
+            let matchesCategory = false;
+            if (category === 'Popular') {
+                matchesCategory = item.popular === true;
+            } else {
+                matchesCategory = (item.category === category) || (item.category_group === category);
+            }
             const matchesSearch = item.name.toLowerCase().includes(query.toLowerCase());
             return matchesCategory && matchesSearch;
         });
@@ -50,12 +77,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        const frag = document.createDocumentFragment();
+
         filtered.forEach(item => {
             const card = document.createElement('div');
             card.className = 'menu-card';
+            card.dataset.id = item.id;
             card.innerHTML = `
                 <div class="card-img-container">
-                    <img src="${item.image}" alt="${item.name}" onerror="this.src='https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=2072&auto=format&fit=crop'">
+                    <img src="${item.image}" alt="${item.name}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=2072&auto=format&fit=crop'">
                 </div>
                 <div class="card-info">
                     <h3>${item.name}</h3>
@@ -66,23 +96,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
-            
-            // Add to cart click handler
-            card.querySelector('.add-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                addToCart(item);
-            });
 
-            // Card click for details (placeholder for now)
-            card.addEventListener('click', () => {
-                showDetails(item);
-            });
-
-            menuGrid.appendChild(card);
+            frag.appendChild(card);
         });
+
+        menuGrid.appendChild(frag);
     }
 
-    // Category Navigation
+    // Category Navigation (existing buttons)
     navItems.forEach(btn => {
         btn.addEventListener('click', () => {
             navItems.forEach(n => n.classList.remove('active'));
@@ -92,11 +113,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Search Functionality
-    searchInput.addEventListener('input', (e) => {
+    // Event delegation on menu grid to reduce listeners
+    menuGrid.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('.add-btn');
+        if (addBtn) {
+            const id = Number(addBtn.dataset.id);
+            const item = menuData.find(m => m.id === id);
+            if (item) addToCart(item);
+            return;
+        }
+
+        const card = e.target.closest('.menu-card');
+        if (card) {
+            const id = Number(card.dataset.id);
+            const item = menuData.find(m => m.id === id);
+            if (item) showDetails(item);
+        }
+    });
+
+    // Search Functionality — debounced to reduce render churn
+    function debounce(fn, wait) {
+        let t;
+        return function (...args) {
+            clearTimeout(t);
+            t = setTimeout(() => fn.apply(this, args), wait);
+        };
+    }
+
+    const onSearch = debounce((e) => {
         const activeCategory = document.querySelector('.nav-item.active').dataset.category;
         renderMenu(activeCategory, e.target.value);
-    });
+    }, 300);
+
+    searchInput.addEventListener('input', onSearch);
 
     // Cart Functions
     function addToCart(item) {
