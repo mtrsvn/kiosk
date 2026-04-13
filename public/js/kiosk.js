@@ -4,6 +4,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item');
     const loadingScreen = document.getElementById('loading-screen');
     const startScreen = document.getElementById('start-screen');
+    const mainContent = document.querySelector('.main-content');
+    const sidebar = document.querySelector('.sidebar');
+
+    // Create a shared animated indicator for the sidebar
+    const sidebarIndicator = document.createElement('div');
+    sidebarIndicator.className = 'sidebar-indicator';
+    if (sidebar) {
+        sidebar.appendChild(sidebarIndicator);
+        // anchor the indicator at top:0 so translateY is a stable transform baseline
+        sidebarIndicator.style.top = '0px';
+        sidebarIndicator.style.transform = 'translateY(0)';
+    }
+
+    let indicatorRaf = null;
+    const INDICATOR_HEIGHT = 40; // px, should match CSS
+
+    function moveSidebarIndicator(target) {
+        if (!target || !sidebarIndicator || !sidebar) return;
+
+        // cancel in-flight rAF
+        if (indicatorRaf) cancelAnimationFrame(indicatorRaf);
+
+        indicatorRaf = requestAnimationFrame(() => {
+            // compute offset relative to sidebar using offsetTop to avoid extra layout reads
+            // center the indicator inside the target element
+            const top = Math.round(target.offsetTop + (target.offsetHeight / 2) - (INDICATOR_HEIGHT / 2));
+
+            // safety: ensure top is at least 0 and within sidebar bounds
+            const maxTop = Math.max(0, sidebar.scrollHeight - INDICATOR_HEIGHT - 8);
+            const clampedTop = Math.min(Math.max(0, top), maxTop);
+
+            // use transform for smooth GPU-accelerated animation
+            sidebarIndicator.style.transform = `translateY(${clampedTop}px)`;
+            // ensure height stays consistent
+            sidebarIndicator.style.height = INDICATOR_HEIGHT + 'px';
+        });
+    }
     const cartItemsContainer = document.getElementById('cart-items');
     const totalAmountSpan = document.getElementById('total-amount');
     const checkoutBtn = document.querySelector('.checkout-btn');
@@ -21,7 +58,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 
     // Start Order — fade out then hide from layout
+    // Auth modal elements and behavior
+    const authOverlay = document.getElementById('auth-overlay');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const loginErrors = document.getElementById('login-errors');
+    const registerErrors = document.getElementById('register-errors');
+
+    function showAuth() {
+        if (!authOverlay) return;
+        authOverlay.classList.add('show');
+        authOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideAuth() {
+        if (!authOverlay) return;
+        authOverlay.classList.remove('show');
+        authOverlay.setAttribute('aria-hidden', 'true');
+    }
+
+    const authTrack = document.getElementById('auth-track');
+    const authCarousel = document.getElementById('auth-carousel');
+    // tab switching with slide animation
+    function switchTo(tab) {
+        if (!tabLogin || !tabRegister || !authTrack) return;
+        const carouselWidth = (authCarousel && authCarousel.clientWidth) ? authCarousel.clientWidth : 420;
+        if (tab === 'login') {
+            tabLogin.classList.add('active');
+            tabRegister.classList.remove('active');
+            authTrack.style.transform = `translateX(0px)`;
+            if (loginForm) loginForm.classList.add('visible');
+            if (registerForm) registerForm.classList.remove('visible');
+        } else {
+            tabRegister.classList.add('active');
+            tabLogin.classList.remove('active');
+            authTrack.style.transform = `translateX(-${carouselWidth}px)`;
+            if (registerForm) registerForm.classList.add('visible');
+            if (loginForm) loginForm.classList.remove('visible');
+        }
+    }
+
+    if (tabLogin) tabLogin.addEventListener('click', () => switchTo('login'));
+    if (tabRegister) tabRegister.addEventListener('click', () => switchTo('register'));
+
+    // If not authenticated, show auth modal on load
+    if (typeof window.isAuthenticated !== 'undefined' && !window.isAuthenticated) {
+        showAuth();
+        // ensure initial tab/form is visible
+        switchTo('login');
+    }
+
+    // Start Order — fade out then hide from layout (gated by auth)
     startScreen.addEventListener('click', () => {
+        if (typeof window.isAuthenticated !== 'undefined' && !window.isAuthenticated) {
+            showAuth();
+            return;
+        }
+
         startScreen.classList.add('hidden');
 
         const onTransitionEnd = (e) => {
@@ -34,6 +129,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
         startScreen.addEventListener('transitionend', onTransitionEnd);
     });
+
+    // Attach login/register submission handlers
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : null;
+
+    async function submitForm(url, form, errorsEl) {
+        errorsEl.textContent = '';
+        const formData = new FormData(form);
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: formData
+            });
+            const json = await res.json();
+            if (res.ok && json.success) {
+                window.isAuthenticated = true;
+                hideAuth();
+                return true;
+            }
+            // show errors
+            if (json.errors) {
+                const msgs = [];
+                Object.values(json.errors).forEach(arr => { if (Array.isArray(arr)) msgs.push(...arr); });
+                errorsEl.textContent = msgs.join(' ');
+            } else if (json.message) {
+                errorsEl.textContent = json.message;
+            } else {
+                errorsEl.textContent = 'Authentication failed.';
+            }
+        } catch (err) {
+            errorsEl.textContent = 'Network error. Please try again.';
+            console.error(err);
+        }
+        return false;
+    }
+
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await submitForm('/login', loginForm, loginErrors);
+        });
+    }
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const ok = await submitForm('/register', registerForm, registerErrors);
+            if (ok) {
+                // optionally switch to logged-in state
+            }
+        });
+    }
 
     // Fetch Menu Data with sessionStorage cache
     const cached = sessionStorage.getItem('menuData');
@@ -59,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMenu(category, query = '') {
         // Clear and build with a document fragment to minimize reflows
         menuGrid.innerHTML = '';
-        categoryTitle.textContent = category === 'Popular' ? '🔥 Most ordered right now' : category;
+        categoryTitle.textContent = category === 'Popular' ? 'Most ordered right now' : category;
 
         const filtered = menuData.filter(item => {
             let matchesCategory = false;
@@ -103,15 +251,51 @@ document.addEventListener('DOMContentLoaded', () => {
         menuGrid.appendChild(frag);
     }
 
-    // Category Navigation (existing buttons)
+    // Category Navigation (existing buttons) — animate main content and move shared indicator
     navItems.forEach(btn => {
         btn.addEventListener('click', () => {
+            // If already active, do nothing
+            if (btn.classList.contains('active')) return;
+
+            // Mark active immediately for visual feedback in sidebar
             navItems.forEach(n => n.classList.remove('active'));
             btn.classList.add('active');
-            renderMenu(btn.dataset.category);
+
+            // move the shared indicator to the clicked item
+            moveSidebarIndicator(btn);
+
+            // If mainContent exists, animate slide-out, update, then slide-in
+            if (mainContent) {
+                mainContent.classList.add('slide-out');
+
+                const onTransitionEnd = (e) => {
+                    if (e.propertyName !== 'opacity') return;
+                    mainContent.removeEventListener('transitionend', onTransitionEnd);
+
+                    // update content while out of view
+                    renderMenu(btn.dataset.category);
+
+                    // force reflow then play slide-in
+                    void mainContent.offsetWidth;
+                    mainContent.classList.remove('slide-out');
+                    mainContent.classList.add('slide-in');
+
+                    // remove slide-in class after animation finishes
+                    setTimeout(() => mainContent.classList.remove('slide-in'), 380);
+                };
+
+                mainContent.addEventListener('transitionend', onTransitionEnd);
+            } else {
+                renderMenu(btn.dataset.category);
+            }
+
             searchInput.value = ''; // Clear search on category change
         });
     });
+
+    // position indicator at the initially active nav item
+    const initiallyActive = document.querySelector('.nav-item.active');
+    if (initiallyActive) moveSidebarIndicator(initiallyActive);
 
     // Event delegation on menu grid to reduce listeners
     menuGrid.addEventListener('click', (e) => {
@@ -229,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         modalBody.innerHTML = `
             <div style="text-align: center; padding: 2rem;">
-                <div style="font-size: 5rem; margin-bottom: 2rem;">🎉</div>
+                <div style="font-size: 5rem; margin-bottom: 2rem;"></div>
                 <h2 style="font-size: 3rem; font-weight: 800; margin-bottom: 1rem; color: var(--primary);">ORDER SUCCESSFUL!</h2>
                 <p style="font-size: 1.2rem; color: var(--on-surface-variant); margin-bottom: 2rem;">Your order is being prepared by the Beast team.</p>
                 
