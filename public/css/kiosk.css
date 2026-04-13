@@ -636,13 +636,13 @@ body {
 
 .auth-input::placeholder{ color: rgba(255,255,255,0.45); }
 .auth-input{ color: var(--on-surface); }
-.auth-input:focus{ box-shadow: 0 12px 30px rgba(0,0,0,0.7); transform: translateY(-1px); }
+.auth-input:focus{ box-shadow: 0 12px 30px rgba(0,0,0,0.7); transform: none !important; }
 
 .auth-tabs button{ background: transparent; border:1px solid rgba(255,255,255,0.04); }
-.auth-tabs button.active{ box-shadow: 0 10px 30px rgba(255,92,0,0.12); transform: translateY(-2px); }
+.auth-tabs button.active{ box-shadow: 0 10px 30px rgba(255,92,0,0.12); transform: none !important; }
 
 .auth-btn{ transition: transform 0.18s ease, box-shadow 0.18s ease; }
-.auth-btn:hover{ transform: translateY(-3px); box-shadow: 0 12px 30px rgba(255,92,0,0.12); }
+.auth-btn:hover{ transform: none !important; box-shadow: 0 12px 30px rgba(255,92,0,0.12); }
 
 .auth-errors{ min-height:1.2em; }
 
@@ -830,4 +830,15 @@ button:hover,
 .qty-btn-modal.minus {
     box-shadow: none !important;
     background: rgba(255,255,255,0.06) !important;
+}
+
+/* Remove focus outlines for text inputs to match button appearance */
+input:focus,
+textarea:focus,
+select:focus,
+.auth-input:focus,
+.search-bar input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: rgba(255,255,255,0.04) !important;
 }
