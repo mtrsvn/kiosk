@@ -86,5 +86,16 @@
         "image": "/images/beast-fries.png",
         "popular": false,
         "available": true
+    },
+    {
+        "id": 9,
+        "name": "Lomi",
+        "price": 90,
+        "description": "Loming Batangas",
+        "category": "Lomi",
+        "category_group": "Sides",
+        "image": "https://assets.unileversolutions.com/v1/94455057.jpg",
+        "popular": true,
+        "available": true
     }
 ]

@@ -48,12 +48,34 @@ class AdminProductController extends Controller
         return response()->json(['products' => $products]);
     }
 
+    public function store(Request $request)
+    {
+        $this->authorizeAdmin();
+
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+            'image' => 'nullable|string|max:2048',
+            'category' => 'nullable|string|max:255',
+            'category_group' => 'nullable|string|max:255',
+            'popular' => 'boolean',
+            'available' => 'boolean',
+        ]);
+
+        $product = Product::create($data);
+        $this->syncMenuJson();
+
+        return response()->json(['success' => true, 'product' => $product]);
+    }
+
     public function update(Request $request, Product $product)
     {
         $this->authorizeAdmin();
 
         $data = $request->validate([
             'name' => 'sometimes|required|string|max:255',
+            'price' => 'sometimes|numeric|min:0',
             'description' => 'sometimes|nullable|string',
             'image' => 'sometimes|nullable|string|max:2048',
             'category' => 'sometimes|nullable|string|max:255',

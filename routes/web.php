@@ -74,5 +74,6 @@ Route::get('/admin/products/export', [ProductSyncController::class, 'export']);
 
 // Admin product management API
 Route::get('/admin/products', [AdminProductController::class, 'index']);
+Route::post('/admin/products', [AdminProductController::class, 'store']);
 Route::put('/admin/products/{product}', [AdminProductController::class, 'update']);
 Route::delete('/admin/products/{product}', [AdminProductController::class, 'destroy']);

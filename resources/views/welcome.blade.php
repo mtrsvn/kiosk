@@ -195,7 +195,10 @@
         <div class="admin-modal-content">
             <div class="admin-modal-header">
                 <h2>Manage Products</h2>
-                <button class="admin-modal-close" aria-label="Close">&times;</button>
+                <div class="admin-modal-header-actions">
+                    <button id="admin-add-btn" class="admin-btn admin-btn-add">+ Add Product</button>
+                    <button class="admin-modal-close" aria-label="Close">&times;</button>
+                </div>
             </div>
             <div class="admin-search-bar">
                 <input type="text" id="admin-search" placeholder="Search products...">
@@ -217,6 +220,8 @@
                 <input type="hidden" id="admin-edit-id">
                 <label for="admin-edit-name">Name</label>
                 <input type="text" id="admin-edit-name" class="admin-input" required>
+                <label for="admin-edit-price">Price (PHP)</label>
+                <input type="number" id="admin-edit-price" class="admin-input" min="0" step="0.01" required>
                 <label for="admin-edit-description">Description</label>
                 <textarea id="admin-edit-description" class="admin-input admin-textarea" rows="3"></textarea>
                 <label for="admin-edit-image">Image URL</label>

@@ -639,8 +639,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminEditClose = document.querySelector('.admin-edit-close');
     const adminEditForm = document.getElementById('admin-edit-form');
     const adminDeleteBtn = document.getElementById('admin-delete-btn');
+    const adminAddBtn = document.getElementById('admin-add-btn');
 
     let adminProducts = [];
+    let adminEditMode = 'edit'; // 'edit' or 'create'
 
     // Show/hide admin button on page load based on role
     if (adminEditBtn) {
@@ -731,6 +733,26 @@ document.addEventListener('DOMContentLoaded', () => {
         adminEditBtn.addEventListener('click', openAdminModal);
     }
 
+    // Add Product button
+    if (adminAddBtn) {
+        adminAddBtn.addEventListener('click', () => openAddProduct());
+    }
+
+    function openAddProduct() {
+        adminEditMode = 'create';
+        document.getElementById('admin-edit-id').value = '';
+        document.getElementById('admin-edit-name').value = '';
+        document.getElementById('admin-edit-price').value = '';
+        document.getElementById('admin-edit-description').value = '';
+        document.getElementById('admin-edit-image').value = '';
+        document.getElementById('admin-edit-popular').checked = false;
+        document.getElementById('admin-edit-available').checked = true;
+        document.getElementById('admin-edit-title').textContent = 'Add New Product';
+        populateCategoryDropdowns({ category: '', category_group: '' });
+        adminDeleteBtn.style.display = 'none';
+        adminEditModal.classList.add('show');
+    }
+
     // Close admin modal
     if (adminModalClose) {
         adminModalClose.addEventListener('click', closeAdminModal);
@@ -755,14 +777,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function openEditProduct(product) {
         if (!adminEditModal) return;
+        adminEditMode = 'edit';
         document.getElementById('admin-edit-id').value = product.id;
         document.getElementById('admin-edit-name').value = product.name || '';
+        document.getElementById('admin-edit-price').value = product.price || '';
         document.getElementById('admin-edit-description').value = product.description || '';
         document.getElementById('admin-edit-image').value = product.image || '';
         populateCategoryDropdowns(product);
         document.getElementById('admin-edit-popular').checked = !!product.popular;
         document.getElementById('admin-edit-available').checked = product.available !== false && product.available !== 0;
         document.getElementById('admin-edit-title').textContent = 'Edit: ' + product.name;
+        adminDeleteBtn.style.display = '';
         adminEditModal.classList.add('show');
     }
 
@@ -798,13 +823,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Save product edits
+    // Save product (create or edit)
     if (adminEditForm) {
         adminEditForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const id = document.getElementById('admin-edit-id').value;
             const payload = {
                 name: document.getElementById('admin-edit-name').value,
+                price: parseFloat(document.getElementById('admin-edit-price').value) || 0,
                 description: document.getElementById('admin-edit-description').value,
                 image: document.getElementById('admin-edit-image').value,
                 category: document.getElementById('admin-edit-category').value || null,
@@ -812,9 +838,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 popular: document.getElementById('admin-edit-popular').checked,
                 available: document.getElementById('admin-edit-available').checked,
             };
+
+            const isCreate = adminEditMode === 'create';
+            const url = isCreate ? '/admin/products' : '/admin/products/' + id;
+            const method = isCreate ? 'POST' : 'PUT';
+
             try {
-                const res = await fetch('/admin/products/' + id, {
-                    method: 'PUT',
+                const res = await fetch(url, {
+                    method: method,
                     credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
@@ -827,13 +858,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (res.ok && json.success) {
                     closeEditProduct();
                     loadAdminProducts();
-                    // also refresh the menu data so the kiosk view is up to date
                     refreshMenuData();
                 } else {
-                    alert('Failed to save changes.');
+                    const msg = json.message || (isCreate ? 'Failed to add product.' : 'Failed to save changes.');
+                    alert(msg);
                 }
             } catch (err) {
-                console.error('Admin update error', err);
+                console.error('Admin save error', err);
                 alert('Network error while saving.');
             }
         });
