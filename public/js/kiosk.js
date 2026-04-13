@@ -159,10 +159,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.ok && json.success) {
                 window.isAuthenticated = true;
+                window.userRole = json.role || null;
                 hideAuth();
                 // reveal Exit button after successful auth
                 const btn = document.querySelector('.logout-btn');
                 if (btn) btn.classList.remove('hidden');
+                // reveal admin Edit button if admin
+                const adminBtn = document.querySelector('.admin-edit-btn');
+                if (adminBtn) {
+                    if (window.userRole === 'admin') adminBtn.classList.remove('hidden');
+                    else adminBtn.classList.add('hidden');
+                }
                 return true;
             }
 
@@ -229,7 +236,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (res.ok) {
                     window.isAuthenticated = false;
+                    window.userRole = null;
                     logoutBtn.classList.add('hidden');
+                    const adminBtn = document.querySelector('.admin-edit-btn');
+                    if (adminBtn) adminBtn.classList.add('hidden');
                     showAuth();
                 } else {
                     console.error('Logout failed');
@@ -617,5 +627,273 @@ document.addEventListener('DOMContentLoaded', () => {
                 modal.style.display = 'none';
             }
         };
+    }
+
+    // ── Admin Edit Button & Modal ──
+    const adminEditBtn = document.querySelector('.admin-edit-btn');
+    const adminModal = document.getElementById('admin-modal');
+    const adminModalClose = document.querySelector('.admin-modal-close');
+    const adminProductsGrid = document.getElementById('admin-products-grid');
+    const adminSearch = document.getElementById('admin-search');
+    const adminEditModal = document.getElementById('admin-edit-modal');
+    const adminEditClose = document.querySelector('.admin-edit-close');
+    const adminEditForm = document.getElementById('admin-edit-form');
+    const adminDeleteBtn = document.getElementById('admin-delete-btn');
+
+    let adminProducts = [];
+
+    // Show/hide admin button on page load based on role
+    if (adminEditBtn) {
+        if (window.userRole === 'admin') {
+            adminEditBtn.classList.remove('hidden');
+        } else {
+            adminEditBtn.classList.add('hidden');
+        }
+    }
+
+    function openAdminModal() {
+        if (!adminModal) return;
+        adminModal.classList.add('show');
+        loadAdminProducts();
+    }
+
+    function closeAdminModal() {
+        if (!adminModal) return;
+        adminModal.classList.remove('show');
+    }
+
+    async function loadAdminProducts() {
+        try {
+            const res = await fetch('/admin/products', {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            });
+            const json = await res.json();
+            if (json.products) {
+                adminProducts = json.products;
+                renderAdminProducts();
+            }
+        } catch (err) {
+            console.error('Failed to load admin products', err);
+        }
+    }
+
+    function renderAdminProducts(query = '') {
+        if (!adminProductsGrid) return;
+        adminProductsGrid.innerHTML = '';
+        const q = query.toLowerCase();
+        const filtered = q ? adminProducts.filter(p => p.name.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)) : adminProducts;
+
+        if (filtered.length === 0) {
+            adminProductsGrid.innerHTML = '<div class="no-results" style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--on-surface-variant);">No products found.</div>';
+            return;
+        }
+
+        const frag = document.createDocumentFragment();
+        filtered.forEach(product => {
+            const card = document.createElement('div');
+            card.className = 'admin-product-card' + (product.available === false || product.available === 0 ? ' unavailable' : '');
+            const badges = [];
+            if (product.category_group) badges.push(`<span class="admin-badge category-badge">${product.category_group}</span>`);
+            if (product.popular) badges.push('<span class="admin-badge popular">Popular</span>');
+            if (product.available === false || product.available === 0) badges.push('<span class="admin-badge unavailable-badge">Unavailable</span>');
+            else badges.push('<span class="admin-badge available-badge">Available</span>');
+
+            card.innerHTML = `
+                <div class="admin-card-img">
+                    <img src="${product.image || ''}" alt="${product.name}" onerror="this.src='https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=2072&auto=format&fit=crop'">
+                </div>
+                <div class="admin-card-body">
+                    <h4>${product.name}</h4>
+                    <p>${product.description || ''}</p>
+                    <div class="admin-card-badges">${badges.join('')}</div>
+                </div>
+                <div class="admin-card-footer">
+                    <span class="admin-card-price">PHP ${product.price}</span>
+                    <button class="admin-card-edit-btn" data-id="${product.id}">Edit</button>
+                </div>
+            `;
+            frag.appendChild(card);
+        });
+        adminProductsGrid.appendChild(frag);
+    }
+
+    // Admin search
+    if (adminSearch) {
+        const adminSearchDebounce = debounce((e) => {
+            renderAdminProducts(e.target.value);
+        }, 250);
+        adminSearch.addEventListener('input', adminSearchDebounce);
+    }
+
+    // Open admin modal on Edit button click
+    if (adminEditBtn) {
+        adminEditBtn.addEventListener('click', openAdminModal);
+    }
+
+    // Close admin modal
+    if (adminModalClose) {
+        adminModalClose.addEventListener('click', closeAdminModal);
+    }
+    if (adminModal) {
+        adminModal.addEventListener('click', (e) => {
+            if (e.target === adminModal) closeAdminModal();
+        });
+    }
+
+    // Delegate click on edit buttons in admin grid
+    if (adminProductsGrid) {
+        adminProductsGrid.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.admin-card-edit-btn');
+            if (editBtn) {
+                const id = Number(editBtn.dataset.id);
+                const product = adminProducts.find(p => p.id === id);
+                if (product) openEditProduct(product);
+            }
+        });
+    }
+
+    function openEditProduct(product) {
+        if (!adminEditModal) return;
+        document.getElementById('admin-edit-id').value = product.id;
+        document.getElementById('admin-edit-name').value = product.name || '';
+        document.getElementById('admin-edit-description').value = product.description || '';
+        document.getElementById('admin-edit-image').value = product.image || '';
+        populateCategoryDropdowns(product);
+        document.getElementById('admin-edit-popular').checked = !!product.popular;
+        document.getElementById('admin-edit-available').checked = product.available !== false && product.available !== 0;
+        document.getElementById('admin-edit-title').textContent = 'Edit: ' + product.name;
+        adminEditModal.classList.add('show');
+    }
+
+    function populateCategoryDropdowns(currentProduct) {
+        const catSelect = document.getElementById('admin-edit-category');
+        const grpSelect = document.getElementById('admin-edit-category-group');
+        if (!catSelect || !grpSelect) return;
+
+        // Collect unique categories and groups from all products
+        const categories = [...new Set(adminProducts.map(p => p.category).filter(Boolean))].sort();
+        const groups = [...new Set(adminProducts.map(p => p.category_group).filter(Boolean))].sort();
+
+        catSelect.innerHTML = '<option value="">-- None --</option>' + categories.map(c =>
+            `<option value="${c}"${c === (currentProduct.category || '') ? ' selected' : ''}>${c}</option>`
+        ).join('');
+
+        grpSelect.innerHTML = '<option value="">-- None --</option>' + groups.map(g =>
+            `<option value="${g}"${g === (currentProduct.category_group || '') ? ' selected' : ''}>${g}</option>`
+        ).join('');
+    }
+
+    function closeEditProduct() {
+        if (!adminEditModal) return;
+        adminEditModal.classList.remove('show');
+    }
+
+    if (adminEditClose) {
+        adminEditClose.addEventListener('click', closeEditProduct);
+    }
+    if (adminEditModal) {
+        adminEditModal.addEventListener('click', (e) => {
+            if (e.target === adminEditModal) closeEditProduct();
+        });
+    }
+
+    // Save product edits
+    if (adminEditForm) {
+        adminEditForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('admin-edit-id').value;
+            const payload = {
+                name: document.getElementById('admin-edit-name').value,
+                description: document.getElementById('admin-edit-description').value,
+                image: document.getElementById('admin-edit-image').value,
+                category: document.getElementById('admin-edit-category').value || null,
+                category_group: document.getElementById('admin-edit-category-group').value || null,
+                popular: document.getElementById('admin-edit-popular').checked,
+                available: document.getElementById('admin-edit-available').checked,
+            };
+            try {
+                const res = await fetch('/admin/products/' + id, {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+                if (res.ok && json.success) {
+                    closeEditProduct();
+                    loadAdminProducts();
+                    // also refresh the menu data so the kiosk view is up to date
+                    refreshMenuData();
+                } else {
+                    alert('Failed to save changes.');
+                }
+            } catch (err) {
+                console.error('Admin update error', err);
+                alert('Network error while saving.');
+            }
+        });
+    }
+
+    // Delete product
+    if (adminDeleteBtn) {
+        adminDeleteBtn.addEventListener('click', async () => {
+            const id = document.getElementById('admin-edit-id').value;
+            if (!confirm('Are you sure you want to delete this product? This cannot be undone.')) return;
+            try {
+                const res = await fetch('/admin/products/' + id, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+                const json = await res.json();
+                if (res.ok && json.success) {
+                    closeEditProduct();
+                    loadAdminProducts();
+                    refreshMenuData();
+                } else {
+                    alert('Failed to delete product.');
+                }
+            } catch (err) {
+                console.error('Admin delete error', err);
+                alert('Network error while deleting.');
+            }
+        });
+    }
+
+    // Refresh the kiosk menu data from the server-side products
+    async function refreshMenuData() {
+        try {
+            const res = await fetch('/admin/products', {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            });
+            const json = await res.json();
+            if (json.products) {
+                // map DB products to the shape used by the menu renderer
+                menuData = json.products.filter(p => p.available !== false && p.available !== 0).map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    price: p.price,
+                    description: p.description || '',
+                    category: p.category || '',
+                    category_group: p.category_group || '',
+                    image: p.image || '',
+                    popular: !!p.popular
+                }));
+                try { sessionStorage.setItem('menuData', JSON.stringify(menuData)); } catch (e) {}
+                const activeCat = document.querySelector('.nav-item.active');
+                renderMenu(activeCat ? activeCat.dataset.category : 'Popular');
+            }
+        } catch (err) {
+            console.error('Failed to refresh menu', err);
+        }
     }
 });

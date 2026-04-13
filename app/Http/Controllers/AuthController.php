@@ -19,7 +19,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($data)) {
             $request->session()->regenerate();
-            return response()->json(['success' => true]);
+            return response()->json(['success' => true, 'role' => Auth::user()->role]);
         }
 
         return response()->json(['success' => false, 'message' => 'Invalid credentials'], 422);
@@ -42,7 +42,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return response()->json(['success' => true]);
+        return response()->json(['success' => true, 'role' => $user->role]);
     }
 
     public function logout(Request $request)

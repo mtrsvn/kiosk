@@ -8,6 +8,7 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\Admin\ProductSyncController;
+use App\Http\Controllers\Admin\AdminProductController;
 
 Route::get('/', function () {
     // If products table exists but is empty, auto-import menu.json into DB
@@ -70,3 +71,8 @@ Route::post('/admin/products/export', [ProductSyncController::class, 'export']);
 // convenience GET endpoints for local use (bypass CSRF restriction on POST)
 Route::get('/admin/products/import', [ProductSyncController::class, 'import']);
 Route::get('/admin/products/export', [ProductSyncController::class, 'export']);
+
+// Admin product management API
+Route::get('/admin/products', [AdminProductController::class, 'index']);
+Route::put('/admin/products/{product}', [AdminProductController::class, 'update']);
+Route::delete('/admin/products/{product}', [AdminProductController::class, 'destroy']);

@@ -68,6 +68,7 @@ class ProductSyncController extends Controller
                 'category_group' => $r->category_group,
                 'image' => $r->image,
                 'popular' => (bool) $r->popular,
+                'available' => isset($r->available) ? (bool) $r->available : true,
             ];
         }
 

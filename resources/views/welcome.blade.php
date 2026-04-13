@@ -56,7 +56,7 @@
         </div>
     </div>
 
-    <script>window.isAuthenticated = {!! json_encode(auth()->check()) !!};</script>
+    <script>window.isAuthenticated = {!! json_encode(auth()->check()) !!};window.userRole = {!! json_encode(auth()->check() ? auth()->user()->role : null) !!};</script>
     <div id="loading-screen" class="loading-screen">
         <div class="loader"></div>
     </div>
@@ -137,6 +137,8 @@
                     </button>
                 @endforeach
             </nav>
+            <!-- Admin Edit button (shows only for admin users, above Exit) -->
+            <button class="admin-edit-btn hidden" title="Edit Products" aria-label="Edit Products">Edit</button>
             <!-- Logout button bottom-left (shows only when authenticated) -->
             <button class="logout-btn" title="Exit" aria-label="Exit">Exit</button>
         </aside>
@@ -185,6 +187,65 @@
             <div class="modal-body" id="modal-body-content">
                 <!-- Data will be injected -->
             </div>
+        </div>
+    </div>
+
+    <!-- Admin Products Modal -->
+    <div id="admin-modal" class="admin-modal">
+        <div class="admin-modal-content">
+            <div class="admin-modal-header">
+                <h2>Manage Products</h2>
+                <button class="admin-modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="admin-search-bar">
+                <input type="text" id="admin-search" placeholder="Search products...">
+            </div>
+            <div id="admin-products-grid" class="admin-products-grid">
+                <!-- Admin product cards injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Edit Product Modal (nested) -->
+    <div id="admin-edit-modal" class="admin-edit-overlay">
+        <div class="admin-edit-content">
+            <div class="admin-edit-header">
+                <h3 id="admin-edit-title">Edit Product</h3>
+                <button class="admin-edit-close" aria-label="Close">&times;</button>
+            </div>
+            <form id="admin-edit-form" class="admin-edit-form">
+                <input type="hidden" id="admin-edit-id">
+                <label for="admin-edit-name">Name</label>
+                <input type="text" id="admin-edit-name" class="admin-input" required>
+                <label for="admin-edit-description">Description</label>
+                <textarea id="admin-edit-description" class="admin-input admin-textarea" rows="3"></textarea>
+                <label for="admin-edit-image">Image URL</label>
+                <input type="text" id="admin-edit-image" class="admin-input" placeholder="https://...">
+                <div class="admin-edit-row">
+                    <div class="admin-edit-field">
+                        <label for="admin-edit-category">Category</label>
+                        <select id="admin-edit-category" class="admin-input admin-select"></select>
+                    </div>
+                    <div class="admin-edit-field">
+                        <label for="admin-edit-category-group">Category Group</label>
+                        <select id="admin-edit-category-group" class="admin-input admin-select"></select>
+                    </div>
+                </div>
+                <div class="admin-edit-toggles">
+                    <label class="admin-toggle-label">
+                        <input type="checkbox" id="admin-edit-popular">
+                        <span>Popular</span>
+                    </label>
+                    <label class="admin-toggle-label">
+                        <input type="checkbox" id="admin-edit-available">
+                        <span>Available</span>
+                    </label>
+                </div>
+                <div class="admin-edit-actions">
+                    <button type="button" id="admin-delete-btn" class="admin-btn admin-btn-danger">Delete</button>
+                    <button type="submit" class="admin-btn admin-btn-save">Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
 

@@ -868,3 +868,327 @@ select:focus,
 .logout-btn.hidden { opacity: 0; transform: translateY(6px); pointer-events: none; }
 .logout-btn:hover { transform: translateY(-4px); box-shadow: 0 14px 34px rgba(229,57,53,0.32); }
 
+/* ── Admin Edit Button (above Exit) ── */
+.admin-edit-btn {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 70px;
+    width: calc(100% - 28px);
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: var(--surface) !important;
+    color: var(--on-surface) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, opacity 160ms ease;
+}
+.admin-edit-btn:hover {
+    border-color: var(--primary) !important;
+    background: rgba(255, 204, 0, 0.08) !important;
+}
+.admin-edit-btn.hidden { opacity: 0; pointer-events: none; }
+
+/* ── Admin Products Modal ── */
+.admin-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    background: rgba(0,0,0,0.82);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    justify-content: center;
+}
+.admin-modal.show { display: flex; }
+
+.admin-modal-content {
+    width: 94%;
+    max-width: 1100px;
+    max-height: 90vh;
+    background: var(--background);
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideDown 0.38s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.admin-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.admin-modal-header h2 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--on-surface);
+}
+.admin-modal-close {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.06) !important;
+    color: var(--on-surface) !important;
+    font-size: 1.4rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-search-bar {
+    padding: 0 2rem 1rem;
+}
+.admin-search-bar input {
+    width: 100%;
+    padding: 0.8rem 1.2rem;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.04);
+    color: var(--on-surface);
+    font-size: 0.95rem;
+}
+
+.admin-products-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 2rem 2rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+    align-content: start;
+}
+
+/* Admin product card (mirrors menu-card) */
+.admin-product-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 1.25rem;
+    border: 1px solid rgba(255,255,255,0.05);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 200ms ease;
+    position: relative;
+}
+.admin-product-card:hover { border-color: var(--primary); }
+.admin-product-card.unavailable { opacity: 0.5; }
+
+.admin-card-img {
+    width: 100%;
+    height: 140px;
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+.admin-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-card-body { flex: 1; }
+.admin-card-body h4 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+    color: var(--on-surface);
+}
+.admin-card-body p {
+    font-size: 0.82rem;
+    color: var(--on-surface-variant);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 0.6rem;
+}
+
+.admin-card-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+}
+.admin-badge {
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.admin-badge.popular { background: rgba(255,204,0,0.15); color: var(--primary); }
+.admin-badge.unavailable-badge { background: rgba(229,57,53,0.15); color: #e53935; }
+.admin-badge.available-badge { background: rgba(76,175,80,0.15); color: #4CAF50; }
+.admin-badge.category-badge { background: rgba(255,255,255,0.06); color: var(--on-surface-variant); }
+
+.admin-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.admin-card-price {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+.admin-card-edit-btn {
+    padding: 6px 16px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary) !important;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+/* ── Admin Edit Product Overlay ── */
+.admin-edit-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 13000;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+}
+.admin-edit-overlay.show { display: flex; }
+
+.admin-edit-content {
+    width: 94%;
+    max-width: 520px;
+    background: var(--surface);
+    border-radius: 20px;
+    overflow: hidden;
+    animation: slideDown 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.admin-edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.admin-edit-header h3 {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--on-surface);
+}
+.admin-edit-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.06) !important;
+    color: var(--on-surface) !important;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-edit-form {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.admin-edit-form label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--on-surface-variant);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.admin-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    color: var(--on-surface);
+    font-size: 0.95rem;
+    font-family: var(--font-family);
+}
+.admin-textarea { resize: vertical; min-height: 60px; }
+
+.admin-edit-row {
+    display: flex;
+    gap: 0.75rem;
+}
+.admin-edit-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.admin-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23B0B0B0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+}
+
+.admin-edit-toggles {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.5rem 0;
+}
+.admin-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--on-surface);
+    cursor: pointer;
+}
+.admin-toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.admin-edit-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+.admin-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: none;
+    font-weight: 700;
+    font-size: 0.92rem;
+    cursor: pointer;
+    text-align: center;
+}
+.admin-btn-save {
+    background: var(--primary) !important;
+    color: #fff !important;
+}
+.admin-btn-danger {
+    background: #e53935 !important;
+    color: #fff !important;
+}
+
