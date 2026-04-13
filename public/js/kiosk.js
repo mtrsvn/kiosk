@@ -98,6 +98,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (registerForm) registerForm.classList.add('visible');
             if (loginForm) loginForm.classList.remove('visible');
         }
+
+        
     }
 
     if (tabLogin) tabLogin.addEventListener('click', () => switchTo('login'));
@@ -137,32 +139,58 @@ document.addEventListener('DOMContentLoaded', () => {
     async function submitForm(url, form, errorsEl) {
         errorsEl.textContent = '';
         const formData = new FormData(form);
+        // ensure CSRF token is included in the form body as a fallback
+        if (csrfToken && !formData.has('_token')) {
+            formData.append('_token', csrfToken);
+        }
+        // disable form controls while request is in-flight to avoid UI confusion
+        const controls = Array.from(form.elements).filter(el => el.tagName !== 'FIELDSET');
+        controls.forEach(el => el.disabled = true);
         try {
             const res = await fetch(url, {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
                 body: formData
             });
-            const json = await res.json();
+
+            let json = {};
+            try { json = await res.json(); } catch (e) { /* ignore JSON parse errors */ }
+
             if (res.ok && json.success) {
                 window.isAuthenticated = true;
                 hideAuth();
+                // reveal Exit button after successful auth
+                const btn = document.querySelector('.logout-btn');
+                if (btn) btn.classList.remove('hidden');
                 return true;
             }
+
             // show errors
-            if (json.errors) {
+            if (json && json.errors) {
                 const msgs = [];
                 Object.values(json.errors).forEach(arr => { if (Array.isArray(arr)) msgs.push(...arr); });
                 errorsEl.textContent = msgs.join(' ');
-            } else if (json.message) {
+            } else if (json && json.message) {
                 errorsEl.textContent = json.message;
+            } else if (!res.ok) {
+                errorsEl.textContent = `Error: ${res.status} ${res.statusText}`;
             } else {
                 errorsEl.textContent = 'Authentication failed.';
             }
+
+            // focus the password field so user can correct it immediately
+            const pw = form.querySelector('input[name="password"]');
+            if (pw) pw.focus();
+
         } catch (err) {
             errorsEl.textContent = 'Network error. Please try again.';
             console.error(err);
+        } finally {
+            // re-enable controls so user can try again
+            controls.forEach(el => el.disabled = false);
         }
+
         return false;
     }
 
@@ -181,6 +209,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 // optionally switch to logged-in state
             }
         });
+    }
+
+    // Logout button: show/hide and click behavior
+    const logoutBtn = document.querySelector('.logout-btn');
+    if (logoutBtn) {
+        if (typeof window.isAuthenticated !== 'undefined' && !window.isAuthenticated) {
+            logoutBtn.classList.add('hidden');
+        } else {
+            logoutBtn.classList.remove('hidden');
+        }
+
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                const res = await fetch('/logout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                });
+                if (res.ok) {
+                    window.isAuthenticated = false;
+                    logoutBtn.classList.add('hidden');
+                    showAuth();
+                } else {
+                    console.error('Logout failed');
+                }
+            } catch (err) {
+                console.error('Logout error', err);
+            }
+        });
+    }
+
+    // initialize lucide icons now that DOM is ready
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    } else if (window.lucide && typeof window.lucide.replace === 'function') {
+        window.lucide.replace();
     }
 
     // Fetch Menu Data with sessionStorage cache
@@ -202,6 +266,20 @@ document.addEventListener('DOMContentLoaded', () => {
             renderMenu('Popular');
         })
         .catch(err => console.error('Error loading menu:', err));
+
+    // If authenticated, load server-side cart and merge into local cart
+    if (typeof window.isAuthenticated !== 'undefined' && window.isAuthenticated) {
+        fetch('/cart', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(json => {
+                if (json && Array.isArray(json.items)) {
+                    // convert server items to local shape
+                    cart = json.items.map(it => ({ id: it.product_id, product_id: it.product_id, product_name: it.product_name, name: it.product_name, price: Number(it.price), qty: Number(it.quantity) }));
+                    updateCart();
+                }
+            })
+            .catch(err => console.error('Failed to load server cart', err));
+    }
 
     // Render Menu Items
     function renderMenu(category, query = '') {
@@ -340,6 +418,26 @@ document.addEventListener('DOMContentLoaded', () => {
             cart.push({ ...item, qty: qty });
         }
         updateCart();
+        // persist to server cart if authenticated
+        if (typeof window.isAuthenticated !== 'undefined' && window.isAuthenticated) {
+            try {
+                fetch('/cart/add', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        product_id: Number(item.id || item.product_id || item.sku),
+                        quantity: qty || 1
+                    })
+                }).then(res => res.json()).then(json => {
+                    // optional: update local cart item with server id
+                }).catch(err => console.error('cart add failed', err));
+            } catch (e) { console.error(e); }
+        }
     }
 
     function removeFromCart(id) {
@@ -396,15 +494,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Checkout Action
-    checkoutBtn.addEventListener('click', () => {
+    checkoutBtn.addEventListener('click', async () => {
         if (cart.length === 0) return;
 
-        const orderCode = 'MB-' + Math.floor(1000 + Math.random() * 9000);
-        showOrderSuccess(orderCode);
-        
-        // Clear cart
-        cart = [];
-        updateCart();
+        if (typeof window.isAuthenticated === 'undefined' || !window.isAuthenticated) {
+            showAuth();
+            return;
+        }
+
+        // prepare items payload
+        const items = cart.map(i => ({ product_id: i.id || i.product_id, product_name: i.name || i.product_name, price: i.price, quantity: i.qty }));
+
+        try {
+            const res = await fetch('/orders', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify({ items })
+            });
+
+            const json = await res.json();
+            if (res.ok && json.success) {
+                const orderId = json.order_id || json.id || Math.floor(1000 + Math.random() * 9000);
+                showOrderSuccess('MB-' + orderId);
+                // clear local cart
+                cart = [];
+                updateCart();
+            } else {
+                console.error('Order failed', json);
+                alert('Order failed. Please try again.');
+            }
+        } catch (err) {
+            console.error('Order error', err);
+            alert('Network error while placing order.');
+        }
     });
 
     function showOrderSuccess(code) {

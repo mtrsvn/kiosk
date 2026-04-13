@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/kiosk.css') }}">
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <!-- Lucide icons -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.259.0/dist/lucide.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body>
@@ -135,6 +137,8 @@
                     </button>
                 @endforeach
             </nav>
+            <!-- Logout button bottom-left (shows only when authenticated) -->
+            <button class="logout-btn" title="Exit" aria-label="Exit">Exit</button>
         </aside>
 
         <!-- Main Content Area -->
