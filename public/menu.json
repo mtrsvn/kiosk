@@ -12,7 +12,7 @@
     {
         "id": 2,
         "name": "Beast Style",
-        "price": 425,
+        "price": 525,
         "description": "Smashed crispy beef patties with house seasoning, American cheese, pickles, diced white onion, mayo, ketchup, and mustard on a soft roll",
         "category": "Burgers",
         "image": "/images/beast-style.png",
@@ -42,7 +42,7 @@
     {
         "id": 6,
         "name": "Beast Style Combo",
-        "price": 600,
+        "price": 800,
         "description": "Beast Style Burger with Seasoned Crinkle Fries and choice of Soda",
         "category": "Combo Meal",
         "image": "/images/beast-combo.png",

@@ -652,10 +652,10 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        modal.style.display = 'block';
+        modal.classList.add('show');
 
         modalBody.querySelector('.order-again-btn').onclick = () => {
-            modal.style.display = 'none';
+            modal.classList.remove('show');
         };
     }
 
@@ -686,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        modal.style.display = 'block';
+        modal.classList.add('show');
 
         const minusBtn = modalBody.querySelector('.qty-controls .minus');
         const plusBtn = modalBody.querySelector('.qty-controls .plus');
@@ -709,15 +709,15 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBody.querySelector('.addToCartFromModal').onclick = () => {
             const qty = Math.max(1, parseInt(qtyDisplay.textContent || '1'));
             addToCart(item, qty);
-            modal.style.display = 'none';
+            modal.classList.remove('show');
         };
 
         const closeBtn = document.querySelector('.close-modal');
-        closeBtn.onclick = () => modal.style.display = 'none';
-        
+        if (closeBtn) closeBtn.onclick = () => modal.classList.remove('show');
+
         window.onclick = (event) => {
             if (event.target == modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('show');
             }
         };
     }

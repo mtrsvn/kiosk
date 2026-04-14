@@ -43,7 +43,7 @@ class OrderController extends Controller
             }
 
             // optional: clear user's cart if present (stored on user record)
-            if ($user) { $user->cart = []; $user->save(); }
+         //   if ($user) { $user->cart = []; $user->save(); }
 
             return response()->json(['success' => true, 'order_id' => $order->id]);
         });

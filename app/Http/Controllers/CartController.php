@@ -60,7 +60,7 @@ class CartController extends Controller
         }
 
         $user->cart = $cart;
-        $user->save();
+       // $user->save();
 
         return response()->json(['success' => true, 'item' => $found, 'cart' => $cart]);
     }
@@ -90,7 +90,7 @@ class CartController extends Controller
         }
 
         $user->cart = $cart;
-        $user->save();
+//$user->save();
 
         return response()->json(['success' => true, 'cart' => $cart]);
     }
