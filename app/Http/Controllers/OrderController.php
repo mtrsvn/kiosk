@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Cart;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +15,8 @@ class OrderController extends Controller
         $user = Auth::user();
         $data = $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|string',
+            // product_id may be numeric (client sends numbers) or string; accept any non-empty value
+            'items.*.product_id' => 'required',
             'items.*.product_name' => 'required|string',
             'items.*.price' => 'required|numeric',
             'items.*.quantity' => 'required|integer|min:1',
@@ -42,8 +42,8 @@ class OrderController extends Controller
                 ]);
             }
 
-            // optional: clear user's cart if present
-            if ($user) { Cart::where('user_id', $user->id)->delete(); }
+            // optional: clear user's cart if present (stored on user record)
+            if ($user) { $user->cart = []; $user->save(); }
 
             return response()->json(['success' => true, 'order_id' => $order->id]);
         });

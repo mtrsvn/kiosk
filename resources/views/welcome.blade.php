@@ -78,64 +78,8 @@
             <div class="logo-container">
                 <img src="{{ asset('images/MrBeast_Burger.webp') }}" alt="MrBeast Burger" class="sidebar-logo-img">
             </div>
-            <nav class="categories">
-                @php
-                    $menu = [];
-                    $categories = [];
-                    $groups = [];
-                    try {
-                        $menuPath = public_path('menu.json');
-                        if (file_exists($menuPath)) {
-                            $menu = json_decode(file_get_contents($menuPath), true) ?? [];
-                        }
-                        foreach ($menu as $item) {
-                            $cat = $item['category'] ?? null;
-                            $grp = $item['category_group'] ?? null;
-                            if ($grp && !in_array($grp, $groups)) {
-                                $groups[] = $grp;
-                            }
-                            if ($cat && !in_array($cat, $categories)) {
-                                $categories[] = $cat;
-                            }
-                        }
-                        // Build consolidated list: Popular, then groups, then remaining categories
-                        $categories = array_values($categories);
-                        $groups = array_values($groups);
-                        $consolidated = [];
-                        if (!empty($menu)) {
-                            $consolidated[] = 'Popular';
-                        }
-                        foreach ($groups as $g) {
-                            if (!in_array($g, $consolidated)) $consolidated[] = $g;
-                        }
-                        foreach ($categories as $c) {
-                            if (!in_array($c, $consolidated)) $consolidated[] = $c;
-                        }
-                        $categories = $consolidated;
-                        // Ensure Popular appears first
-                        if (($i = array_search('Popular', $categories)) !== false) {
-                            unset($categories[$i]);
-                            array_unshift($categories, 'Popular');
-                        }
-                    } catch (\Exception $e) {
-                        $categories = ['Popular','Combo','Burgers','Sandwiches','Sides'];
-                    }
-
-                    $iconMap = [
-                        'Popular' => '',
-                        'Combo' => '',
-                        'Burgers' => '',
-                        'Sandwiches' => '',
-                        'Sides' => '',
-                    ];
-                @endphp
-
-                @foreach($categories as $idx => $cat)
-                    <button class="nav-item {{ $idx === 0 ? 'active' : '' }}" data-category="{{ $cat }}">
-                        <span class="icon">{{ $iconMap[$cat] ?? '' }}</span>
-                        <span class="label">{{ $cat }}</span>
-                    </button>
-                @endforeach
+            <nav id="categories" class="categories">
+                <!-- Sidebar categories are built dynamically by `public/js/kiosk.js` from /menu.json -->
             </nav>
             <!-- Admin Edit button (shows only for admin users, above Exit) -->
             <button class="admin-edit-btn hidden" title="Edit Products" aria-label="Edit Products">Edit</button>
@@ -227,13 +171,10 @@
                 <label for="admin-edit-image">Image URL</label>
                 <input type="text" id="admin-edit-image" class="admin-input" placeholder="https://...">
                 <div class="admin-edit-row">
-                    <div class="admin-edit-field">
+                    <div class="admin-edit-field" style="flex:1;">
                         <label for="admin-edit-category">Category</label>
-                        <select id="admin-edit-category" class="admin-input admin-select"></select>
-                    </div>
-                    <div class="admin-edit-field">
-                        <label for="admin-edit-category-group">Category Group</label>
-                        <select id="admin-edit-category-group" class="admin-input admin-select"></select>
+                        <input id="admin-edit-category" list="admin-category-list" class="admin-input" />
+                        <datalist id="admin-category-list"></datalist>
                     </div>
                 </div>
                 <div class="admin-edit-toggles">

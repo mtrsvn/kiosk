@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const menuGrid = document.getElementById('menu-grid');
     const categoryTitle = document.getElementById('category-title');
-    const navItems = document.querySelectorAll('.nav-item');
+    const categoriesNav = document.getElementById('categories');
     const loadingScreen = document.getElementById('loading-screen');
     const startScreen = document.getElementById('start-screen');
     const mainContent = document.querySelector('.main-content');
@@ -161,6 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.isAuthenticated = true;
                 window.userRole = json.role || null;
                 hideAuth();
+                try { await flushPendingCartAdds(); } catch (e) { console.error('flush after auth failed', e); }
                 // reveal Exit button after successful auth
                 const btn = document.querySelector('.logout-btn');
                 if (btn) btn.classList.remove('hidden');
@@ -257,11 +258,68 @@ document.addEventListener('DOMContentLoaded', () => {
         window.lucide.replace();
     }
 
+    // Build sidebar from menuData
+    function buildSidebarFromMenu() {
+        if (!categoriesNav) return;
+        // derive categories from menuData (exclude Combo)
+        const cats = [];
+        if (Array.isArray(menuData) && menuData.length > 0) {
+            menuData.forEach(item => {
+                const c = item.category || '';
+                if (!c) return;
+                if (c === 'Combo') return; // exclude combo
+                if (!cats.includes(c)) cats.push(c);
+            });
+        }
+
+        const consolidated = [];
+        if (menuData && menuData.length > 0) consolidated.push('Popular');
+        cats.forEach(c => { if (!consolidated.includes(c)) consolidated.push(c); });
+
+        // clear and build buttons
+        categoriesNav.innerHTML = '';
+        consolidated.forEach((cat, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'nav-item' + (idx === 0 ? ' active' : '');
+            btn.dataset.category = cat;
+            btn.innerHTML = `<span class="icon"></span><span class="label">${cat}</span>`;
+            btn.addEventListener('click', () => {
+                // handle active state
+                categoriesNav.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+                btn.classList.add('active');
+                moveSidebarIndicator(btn);
+                // animate main content then render
+                if (mainContent) {
+                    mainContent.classList.add('slide-out');
+                    const onTransitionEnd = (e) => {
+                        if (e.propertyName !== 'opacity') return;
+                        mainContent.removeEventListener('transitionend', onTransitionEnd);
+                        renderMenu(btn.dataset.category);
+                        void mainContent.offsetWidth;
+                        mainContent.classList.remove('slide-out');
+                        mainContent.classList.add('slide-in');
+                        setTimeout(() => mainContent.classList.remove('slide-in'), 380);
+                    };
+                    mainContent.addEventListener('transitionend', onTransitionEnd);
+                } else {
+                    renderMenu(btn.dataset.category);
+                }
+                const si = document.querySelector('.search-bar input'); if (si) si.value = '';
+            });
+            categoriesNav.appendChild(btn);
+        });
+
+        // position indicator at the initially active nav item
+        const initiallyActive = categoriesNav.querySelector('.nav-item.active');
+        if (initiallyActive) moveSidebarIndicator(initiallyActive);
+    }
+
     // Fetch Menu Data with sessionStorage cache
     const cached = sessionStorage.getItem('menuData');
     if (cached) {
         try {
             menuData = JSON.parse(cached);
+            buildSidebarFromMenu();
             renderMenu('Popular');
         } catch (e) {
             sessionStorage.removeItem('menuData');
@@ -271,8 +329,19 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/menu.json')
         .then(response => response.json())
         .then(data => {
-            menuData = data;
-            try { sessionStorage.setItem('menuData', JSON.stringify(data)); } catch (e) {}
+            // exclude Combo items from client menu data
+            menuData = Array.isArray(data) ? data.filter(d => (d.category || d.category_group || '') !== 'Combo').map(d => ({
+                id: d.id,
+                name: d.name,
+                price: d.price,
+                description: d.description || '',
+                // prefer category_group field from legacy file if present
+                category: d.category_group ?? d.category ?? '',
+                image: d.image || '',
+                popular: !!d.popular
+            })) : [];
+            try { sessionStorage.setItem('menuData', JSON.stringify(menuData)); } catch (e) {}
+            buildSidebarFromMenu();
             renderMenu('Popular');
         })
         .catch(err => console.error('Error loading menu:', err));
@@ -284,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(json => {
                 if (json && Array.isArray(json.items)) {
                     // convert server items to local shape
-                    cart = json.items.map(it => ({ id: it.product_id, product_id: it.product_id, product_name: it.product_name, name: it.product_name, price: Number(it.price), qty: Number(it.quantity) }));
+                    cart = json.items.map(it => ({ id: it.product_id, product_id: it.product_id, product_name: it.product_name, name: it.product_name, price: Number(it.price), qty: Number(it.quantity), image: it.image || '' }));
                     updateCart();
                 }
             })
@@ -302,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (category === 'Popular') {
                 matchesCategory = item.popular === true;
             } else {
-                matchesCategory = (item.category === category) || (item.category_group === category);
+                matchesCategory = (item.category === category);
             }
             const matchesSearch = item.name.toLowerCase().includes(query.toLowerCase());
             return matchesCategory && matchesSearch;
@@ -339,51 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
         menuGrid.appendChild(frag);
     }
 
-    // Category Navigation (existing buttons) — animate main content and move shared indicator
-    navItems.forEach(btn => {
-        btn.addEventListener('click', () => {
-            // If already active, do nothing
-            if (btn.classList.contains('active')) return;
-
-            // Mark active immediately for visual feedback in sidebar
-            navItems.forEach(n => n.classList.remove('active'));
-            btn.classList.add('active');
-
-            // move the shared indicator to the clicked item
-            moveSidebarIndicator(btn);
-
-            // If mainContent exists, animate slide-out, update, then slide-in
-            if (mainContent) {
-                mainContent.classList.add('slide-out');
-
-                const onTransitionEnd = (e) => {
-                    if (e.propertyName !== 'opacity') return;
-                    mainContent.removeEventListener('transitionend', onTransitionEnd);
-
-                    // update content while out of view
-                    renderMenu(btn.dataset.category);
-
-                    // force reflow then play slide-in
-                    void mainContent.offsetWidth;
-                    mainContent.classList.remove('slide-out');
-                    mainContent.classList.add('slide-in');
-
-                    // remove slide-in class after animation finishes
-                    setTimeout(() => mainContent.classList.remove('slide-in'), 380);
-                };
-
-                mainContent.addEventListener('transitionend', onTransitionEnd);
-            } else {
-                renderMenu(btn.dataset.category);
-            }
-
-            searchInput.value = ''; // Clear search on category change
-        });
-    });
-
-    // position indicator at the initially active nav item
-    const initiallyActive = document.querySelector('.nav-item.active');
-    if (initiallyActive) moveSidebarIndicator(initiallyActive);
+    // (Sidebar navigation is built dynamically by buildSidebarFromMenu)
 
     // Event delegation on menu grid to reduce listeners
     menuGrid.addEventListener('click', (e) => {
@@ -428,7 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
             cart.push({ ...item, qty: qty });
         }
         updateCart();
-        // persist to server cart if authenticated
+        // persist to server cart if authenticated, otherwise queue for flush after login
+        const payload = { product_id: Number(item.id || item.product_id || item.sku), quantity: qty || 1 };
         if (typeof window.isAuthenticated !== 'undefined' && window.isAuthenticated) {
             try {
                 fetch('/cart/add', {
@@ -439,27 +465,94 @@ document.addEventListener('DOMContentLoaded', () => {
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({
-                        product_id: Number(item.id || item.product_id || item.sku),
-                        quantity: qty || 1
-                    })
+                    body: JSON.stringify(payload)
                 }).then(res => res.json()).then(json => {
-                    // optional: update local cart item with server id
+                    // server responded; optionally refresh local cart from server
+                    if (json && json.cart) {
+                        cart = json.cart.map(it => ({ id: it.product_id, name: it.product_name, price: Number(it.price), qty: Number(it.quantity), image: it.image || '' }));
+                        updateCart();
+                    }
                 }).catch(err => console.error('cart add failed', err));
             } catch (e) { console.error(e); }
+        } else {
+            // queue pending adds in sessionStorage
+            try {
+                const key = 'pendingCartAdds';
+                const pending = JSON.parse(sessionStorage.getItem(key) || '[]');
+                pending.push(payload);
+                sessionStorage.setItem(key, JSON.stringify(pending));
+                // show auth modal so user can sign in to persist
+                showAuth();
+            } catch (e) { console.error('failed to queue pending cart add', e); }
         }
+    }
+
+    // Flush pending cart adds saved in sessionStorage after successful login
+    async function flushPendingCartAdds() {
+        try {
+            const key = 'pendingCartAdds';
+            const pending = JSON.parse(sessionStorage.getItem(key) || '[]');
+            if (!Array.isArray(pending) || pending.length === 0) return;
+            for (const p of pending) {
+                try {
+                    await fetch('/cart/add', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify(p)
+                    });
+                } catch (e) { console.error('flush pending add failed', e); }
+            }
+            sessionStorage.removeItem(key);
+            // refresh server cart
+            try {
+                const res = await fetch('/cart', { credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+                const json = await res.json();
+                if (json && Array.isArray(json.items)) {
+                    cart = json.items.map(it => ({ id: it.product_id, product_id: it.product_id, product_name: it.product_name, name: it.product_name, price: Number(it.price), qty: Number(it.quantity), image: it.image || '' }));
+                    updateCart();
+                }
+            } catch (e) { console.error('refresh cart after flush failed', e); }
+        } catch (e) { console.error(e); }
     }
 
     function removeFromCart(id) {
         const index = cart.findIndex(c => c.id === id);
-        if (index !== -1) {
-            if (cart[index].qty > 1) {
-                cart[index].qty--;
-            } else {
-                cart.splice(index, 1);
+        if (index === -1) return;
+
+        // If authenticated, request server to remove the product (server will return updated cart)
+        if (typeof window.isAuthenticated !== 'undefined' && window.isAuthenticated) {
+            try {
+                fetch('/cart/remove', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ product_id: id })
+                }).then(res => res.json()).then(json => {
+                    if (json && Array.isArray(json.cart)) {
+                        cart = json.cart.map(it => ({ id: it.product_id, product_id: it.product_id, product_name: it.product_name, name: it.product_name, price: Number(it.price), qty: Number(it.quantity), image: it.image || '' }));
+                        updateCart();
+                    } else {
+                        // fallback: update local copy
+                        if (cart[index].qty > 1) cart[index].qty--; else cart.splice(index, 1);
+                        updateCart();
+                    }
+                }).catch(err => {
+                    console.error('cart remove failed', err);
+                    // local fallback
+                    if (cart[index].qty > 1) cart[index].qty--; else cart.splice(index, 1);
+                    updateCart();
+                });
+            } catch (e) {
+                console.error(e);
+                if (cart[index].qty > 1) cart[index].qty--; else cart.splice(index, 1);
+                updateCart();
             }
+        } else {
+            // local guest cart update
+            if (cart[index].qty > 1) cart[index].qty--; else cart.splice(index, 1);
+            updateCart();
         }
-        updateCart();
     }
 
     function updateCart() {
@@ -696,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'admin-product-card' + (product.available === false || product.available === 0 ? ' unavailable' : '');
             const badges = [];
-            if (product.category_group) badges.push(`<span class="admin-badge category-badge">${product.category_group}</span>`);
+            if (product.category) badges.push(`<span class="admin-badge category-badge">${product.category}</span>`);
             if (product.popular) badges.push('<span class="admin-badge popular">Popular</span>');
             if (product.available === false || product.available === 0) badges.push('<span class="admin-badge unavailable-badge">Unavailable</span>');
             else badges.push('<span class="admin-badge available-badge">Available</span>');
@@ -748,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('admin-edit-popular').checked = false;
         document.getElementById('admin-edit-available').checked = true;
         document.getElementById('admin-edit-title').textContent = 'Add New Product';
-        populateCategoryDropdowns({ category: '', category_group: '' });
+        populateCategoryDropdowns({ category: '' });
         adminDeleteBtn.style.display = 'none';
         adminEditModal.classList.add('show');
     }
@@ -792,21 +885,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function populateCategoryDropdowns(currentProduct) {
-        const catSelect = document.getElementById('admin-edit-category');
-        const grpSelect = document.getElementById('admin-edit-category-group');
-        if (!catSelect || !grpSelect) return;
+        const catEl = document.getElementById('admin-edit-category');
+        const datalist = document.getElementById('admin-category-list');
+        if (!catEl || !datalist) return;
 
-        // Collect unique categories and groups from all products
+        // Collect unique categories from all products (use existing category values)
         const categories = [...new Set(adminProducts.map(p => p.category).filter(Boolean))].sort();
-        const groups = [...new Set(adminProducts.map(p => p.category_group).filter(Boolean))].sort();
 
-        catSelect.innerHTML = '<option value="">-- None --</option>' + categories.map(c =>
-            `<option value="${c}"${c === (currentProduct.category || '') ? ' selected' : ''}>${c}</option>`
-        ).join('');
-
-        grpSelect.innerHTML = '<option value="">-- None --</option>' + groups.map(g =>
-            `<option value="${g}"${g === (currentProduct.category_group || '') ? ' selected' : ''}>${g}</option>`
-        ).join('');
+        // If element is a select (legacy), build options, otherwise set datalist suggestions
+        if (catEl.tagName === 'SELECT') {
+            catEl.innerHTML = '<option value="">-- None --</option>' + categories.map(c =>
+                `<option value="${c}"${c === (currentProduct.category || '') ? ' selected' : ''}>${c}</option>`
+            ).join('');
+            if (currentProduct && currentProduct.category) catEl.value = currentProduct.category;
+        } else {
+            catEl.value = currentProduct.category || '';
+            datalist.innerHTML = categories.map(c => `<option value="${c}"></option>`).join('');
+        }
     }
 
     function closeEditProduct() {
@@ -834,7 +929,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 description: document.getElementById('admin-edit-description').value,
                 image: document.getElementById('admin-edit-image').value,
                 category: document.getElementById('admin-edit-category').value || null,
-                category_group: document.getElementById('admin-edit-category-group').value || null,
                 popular: document.getElementById('admin-edit-popular').checked,
                 available: document.getElementById('admin-edit-available').checked,
             };
@@ -857,8 +951,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 const json = await res.json();
                 if (res.ok && json.success) {
                     closeEditProduct();
-                    loadAdminProducts();
-                    refreshMenuData();
+                    // If server returned the created/updated product, update client state immediately
+                    try {
+                        if (json.product) {
+                            // update adminProducts list
+                            const existingIdx = adminProducts.findIndex(p => p.id === json.product.id);
+                            if (existingIdx !== -1) {
+                                adminProducts[existingIdx] = json.product;
+                            } else {
+                                adminProducts.push(json.product);
+                            }
+
+                            // update menuData if product is available and not a Combo
+                            const prodAvailable = json.product.available !== false && json.product.available !== 0;
+                            const prodCategory = json.product.category || '';
+                            if (prodAvailable && prodCategory && prodCategory !== 'Combo') {
+                                const exists = menuData.find(m => m.id === json.product.id);
+                                const mapped = {
+                                    id: json.product.id,
+                                    name: json.product.name,
+                                    price: json.product.price,
+                                    description: json.product.description || '',
+                                    category: json.product.category || '',
+                                    image: json.product.image || '',
+                                    popular: !!json.product.popular
+                                };
+                                if (exists) {
+                                    Object.assign(exists, mapped);
+                                } else {
+                                    menuData.push(mapped);
+                                }
+                            } else {
+                                // if product became unavailable or is Combo, remove from menuData
+                                menuData = menuData.filter(m => m.id !== json.product.id);
+                            }
+
+                            try { sessionStorage.setItem('menuData', JSON.stringify(menuData)); } catch (e) {}
+                            buildSidebarFromMenu();
+                        }
+                    } catch (e) { console.error('Immediate UI update failed', e); }
+
+                    // refresh server-side copies and rebuild sidebar (await to avoid race)
+                    try {
+                        await loadAdminProducts();
+                    } catch (e) { /* ignore */ }
+                    try {
+                        await refreshMenuData();
+                    } catch (e) { /* ignore */ }
                 } else {
                     const msg = json.message || (isCreate ? 'Failed to add product.' : 'Failed to save changes.');
                     alert(msg);
@@ -909,17 +1048,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const json = await res.json();
             if (json.products) {
                 // map DB products to the shape used by the menu renderer
-                menuData = json.products.filter(p => p.available !== false && p.available !== 0).map(p => ({
+                menuData = json.products.filter(p => p.available !== false && p.available !== 0 && p.category !== 'Combo').map(p => ({
                     id: p.id,
                     name: p.name,
                     price: p.price,
                     description: p.description || '',
                     category: p.category || '',
-                    category_group: p.category_group || '',
                     image: p.image || '',
                     popular: !!p.popular
                 }));
                 try { sessionStorage.setItem('menuData', JSON.stringify(menuData)); } catch (e) {}
+                buildSidebarFromMenu();
                 const activeCat = document.querySelector('.nav-item.active');
                 renderMenu(activeCat ? activeCat.dataset.category : 'Popular');
             }

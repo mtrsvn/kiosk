@@ -24,12 +24,16 @@ class ProductSyncController extends Controller
 
             foreach ($items as $it) {
                 $id = isset($it['id']) ? intval($it['id']) : null;
+                // Prefer category_group from old menu.json as the canonical category source
+                $resolvedCategory = $it['category_group'] ?? $it['category'] ?? null;
+                // Skip Combo items during import
+                if ($resolvedCategory === 'Combo') continue;
+
                 $data = [
                     'name' => $it['name'] ?? '',
                     'price' => isset($it['price']) ? (float) $it['price'] : 0,
                     'description' => $it['description'] ?? null,
-                    'category' => $it['category'] ?? null,
-                    'category_group' => $it['category_group'] ?? null,
+                    'category' => $resolvedCategory,
                     'image' => $it['image'] ?? null,
                     'popular' => !empty($it['popular']) ? 1 : 0,
                     'updated_at' => now(),
@@ -59,13 +63,14 @@ class ProductSyncController extends Controller
         }
         $out = [];
         foreach ($rows as $r) {
+            // Skip Combo meals entirely
+            if (isset($r->category) && $r->category === 'Combo') continue;
             $out[] = [
                 'id' => $r->id,
                 'name' => $r->name,
                 'price' => (float) $r->price,
                 'description' => $r->description,
                 'category' => $r->category,
-                'category_group' => $r->category_group,
                 'image' => $r->image,
                 'popular' => (bool) $r->popular,
                 'available' => isset($r->available) ? (bool) $r->available : true,

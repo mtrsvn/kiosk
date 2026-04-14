@@ -23,13 +23,14 @@ class AdminProductController extends Controller
         $rows = DB::table('products')->orderBy('id')->get();
         $out = [];
         foreach ($rows as $r) {
+            // Skip combo meals
+            if (isset($r->category) && $r->category === 'Combo') continue;
             $out[] = [
                 'id' => $r->id,
                 'name' => $r->name,
                 'price' => (float) $r->price,
                 'description' => $r->description,
                 'category' => $r->category,
-                'category_group' => $r->category_group,
                 'image' => $r->image,
                 'popular' => (bool) $r->popular,
                 'available' => (bool) $r->available,
@@ -58,7 +59,6 @@ class AdminProductController extends Controller
             'description' => 'nullable|string',
             'image' => 'nullable|string|max:2048',
             'category' => 'nullable|string|max:255',
-            'category_group' => 'nullable|string|max:255',
             'popular' => 'boolean',
             'available' => 'boolean',
         ]);
@@ -79,7 +79,6 @@ class AdminProductController extends Controller
             'description' => 'sometimes|nullable|string',
             'image' => 'sometimes|nullable|string|max:2048',
             'category' => 'sometimes|nullable|string|max:255',
-            'category_group' => 'sometimes|nullable|string|max:255',
             'popular' => 'sometimes|boolean',
             'available' => 'sometimes|boolean',
         ]);

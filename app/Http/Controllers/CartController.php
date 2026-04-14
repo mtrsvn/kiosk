@@ -51,6 +51,7 @@ class CartController extends Controller
                 'product_id' => (int) $data['product_id'],
                 'product_name' => $product ? $product->name : 'Item',
                 'price' => $product ? (float) $product->price : 0,
+                'image' => $product ? $product->image : null,
                 'quantity' => $qty,
                 'added_at' => now()->toDateTimeString(),
             ];
@@ -67,7 +68,7 @@ class CartController extends Controller
     public function remove(Request $request)
     {
         $data = $request->validate([
-            'product_id' => 'nullable|string',
+            'product_id' => 'nullable|numeric',
             'index' => 'nullable|integer'
         ]);
 
@@ -79,8 +80,9 @@ class CartController extends Controller
         $cart = $user->cart ?? [];
 
         if (isset($data['product_id'])) {
-            $cart = array_values(array_filter($cart, function ($it) use ($data) {
-                return ($it['product_id'] ?? null) !== $data['product_id'];
+            $pid = intval($data['product_id']);
+            $cart = array_values(array_filter($cart, function ($it) use ($pid) {
+                return intval($it['product_id'] ?? 0) !== $pid;
             }));
         } elseif (isset($data['index'])) {
             if (isset($cart[$data['index']])) unset($cart[$data['index']]);

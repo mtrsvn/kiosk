@@ -22,12 +22,12 @@ Route::get('/', function () {
                     $items = json_decode($json, true) ?: [];
                     foreach ($items as $it) {
                         $id = isset($it['id']) ? intval($it['id']) : null;
+                        // Prefer category_group from menu.json as the canonical category
                         $data = [
                             'name' => $it['name'] ?? '',
                             'price' => isset($it['price']) ? (float) $it['price'] : 0,
                             'description' => $it['description'] ?? null,
-                            'category' => $it['category'] ?? null,
-                            'category_group' => $it['category_group'] ?? null,
+                            'category' => $it['category_group'] ?? $it['category'] ?? null,
                             'image' => $it['image'] ?? null,
                             'popular' => !empty($it['popular']) ? 1 : 0,
                             'created_at' => now(),
