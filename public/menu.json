@@ -68,5 +68,25 @@
         "image": "/images/beast-fries.png",
         "popular": false,
         "available": true
+    },
+    {
+        "id": 11,
+        "name": "Dubai Empanada",
+        "price": 199,
+        "description": "Imported Dubai Empanada from UAE",
+        "category": "Empanada",
+        "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTEXeKY3vfShmfrciZ4Jw4rjyJA22c4vAk8DA&s",
+        "popular": false,
+        "available": true
+    },
+    {
+        "id": 12,
+        "name": "Tame Empanada",
+        "price": 299,
+        "description": "The Less You Know The Better",
+        "category": "Empanada",
+        "image": "https://pbs.twimg.com/media/FTfXeFoXoAAbv8A.png",
+        "popular": false,
+        "available": true
     }
 ]
